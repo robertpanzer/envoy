@@ -99,15 +99,34 @@ void AdminHandler::unregisterConfig(ExtensionConfig& config) {
 }
 
 void AdminHandler::submitBufferedTrace(
-    std::shared_ptr<envoy::data::tap::v2alpha::BufferedTraceWrapper> trace, uint64_t) {
+    const std::shared_ptr<envoy::data::tap::v2alpha::BufferedTraceWrapper>& trace,
+    envoy::service::tap::v2alpha::OutputSink::Format::Enum format, uint64_t) {
   ENVOY_LOG(debug, "admin submitting buffered trace to main thread");
-  main_thread_dispatcher_.post([this, trace]() {
-    if (attached_request_.has_value()) {
-      ENVOY_LOG(debug, "admin writing buffered trace to response");
-      Buffer::OwnedImpl json_trace{MessageUtil::getJsonStringFromMessage(*trace, true, true)};
-      attached_request_.value().admin_stream_->getDecoderFilterCallbacks().encodeData(json_trace,
-                                                                                      false);
+  main_thread_dispatcher_.post([this, trace, format]() {
+    if (!attached_request_.has_value()) {
+      return;
     }
+
+    std::string output_string;
+    switch (format) {
+    case envoy::service::tap::v2alpha::OutputSink::Format::PROTO_BINARY:
+      ASSERT(false); // fixfix
+      break;
+    case envoy::service::tap::v2alpha::OutputSink::Format::PROTO_TEXT:
+      ASSERT(false); // fixfix
+      break;
+    case envoy::service::tap::v2alpha::OutputSink::Format::JSON_BODY_AS_STRING:
+    case envoy::service::tap::v2alpha::OutputSink::Format::JSON_BODY_AS_BYTES:
+      output_string = MessageUtil::getJsonStringFromMessage(*trace, true, true);
+      break;
+    default:
+      NOT_REACHED_GCOVR_EXCL_LINE;
+    }
+
+    ENVOY_LOG(debug, "admin writing buffered trace to response");
+    Buffer::OwnedImpl output_buffer{output_string};
+    attached_request_.value().admin_stream_->getDecoderFilterCallbacks().encodeData(output_buffer,
+                                                                                    false);
   });
 }
 

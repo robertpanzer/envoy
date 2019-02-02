@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package envoy.data.tap.v2alpha;
+option java_package = "io.envoyproxy.envoy.data.tap.v2alpha";
+
+// [#protodoc-title: Tap common data fixfix docs]
+
+// fixfix
+message Body {
+  oneof body_type {
+    // Message body. fixfix
+    bytes as_bytes = 1;
+
+    // fixfix
+    string as_string = 2;
+  }
+
+  // fixfix
+  bool truncated = 3;
+}

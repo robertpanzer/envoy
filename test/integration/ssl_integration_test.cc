@@ -358,16 +358,15 @@ public:
           ->mutable_static_config()
           ->mutable_match_config()
           ->set_any_match(true);
-      auto* file_sink = tap_config.mutable_common_config()
-                            ->mutable_static_config()
-                            ->mutable_output_config()
-                            ->mutable_sinks()
-                            ->Add()
-                            ->mutable_file_per_tap();
-      file_sink->set_path_prefix(path_prefix_);
-      file_sink->set_format(text_format_
-                                ? envoy::service::tap::v2alpha::FilePerTapSink::PROTO_TEXT
-                                : envoy::service::tap::v2alpha::FilePerTapSink::PROTO_BINARY);
+      auto* output_sink = tap_config.mutable_common_config()
+                              ->mutable_static_config()
+                              ->mutable_output_config()
+                              ->mutable_sinks()
+                              ->Add();
+      output_sink->set_format(text_format_
+                                  ? envoy::service::tap::v2alpha::OutputSink::Format::PROTO_TEXT
+                                  : envoy::service::tap::v2alpha::OutputSink::Format::PROTO_BINARY);
+      output_sink->mutable_file_per_tap()->set_path_prefix(path_prefix_);
       tap_config.mutable_transport_socket()->MergeFrom(ssl_transport_socket);
       MessageUtil::jsonConvert(tap_config, *transport_socket->mutable_config());
       // Nuke TLS context from legacy location.
@@ -425,10 +424,10 @@ TEST_P(SslTapIntegrationTest, TwoRequestsWithBinaryProto) {
   EXPECT_THAT(expected_remote_address,
               ProtoEq(trace.socket_buffered_trace().connection().remote_address()));
   ASSERT_GE(trace.socket_buffered_trace().events().size(), 2);
-  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(0).read().data(),
+  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(0).read().data().as_bytes(),
                                "POST /test/long/url HTTP/1.1"));
-  EXPECT_TRUE(
-      absl::StartsWith(trace.socket_buffered_trace().events(1).write().data(), "HTTP/1.1 200 OK"));
+  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(1).write().data().as_bytes(),
+                               "HTTP/1.1 200 OK"));
 
   // Verify a second request hits a different file.
   const uint64_t second_id = Network::ConnectionImpl::nextGlobalIdForTest() + 1;
@@ -450,10 +449,10 @@ TEST_P(SslTapIntegrationTest, TwoRequestsWithBinaryProto) {
   // Validate second connection ID.
   EXPECT_EQ(second_id, trace.socket_buffered_trace().connection().id());
   ASSERT_GE(trace.socket_buffered_trace().events().size(), 2);
-  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(0).read().data(),
+  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(0).read().data().as_bytes(),
                                "GET /test/long/url HTTP/1.1"));
-  EXPECT_TRUE(
-      absl::StartsWith(trace.socket_buffered_trace().events(1).write().data(), "HTTP/1.1 200 OK"));
+  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(1).write().data().as_bytes(),
+                               "HTTP/1.1 200 OK"));
 }
 
 // Validate a single request with text proto output.
@@ -470,10 +469,10 @@ TEST_P(SslTapIntegrationTest, RequestWithTextProto) {
   envoy::data::tap::v2alpha::BufferedTraceWrapper trace;
   MessageUtil::loadFromFile(fmt::format("{}_{}.pb_text", path_prefix_, id), trace, *api_);
   // Test some obvious properties.
-  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(0).read().data(),
+  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(0).read().data().as_bytes(),
                                "POST /test/long/url HTTP/1.1"));
-  EXPECT_TRUE(
-      absl::StartsWith(trace.socket_buffered_trace().events(1).write().data(), "HTTP/1.1 200 OK"));
+  EXPECT_TRUE(absl::StartsWith(trace.socket_buffered_trace().events(1).write().data().as_bytes(),
+                               "HTTP/1.1 200 OK"));
 }
 
 } // namespace Ssl

@@ -2,6 +2,8 @@ syntax = "proto3";
 
 import "envoy/api/v2/route/route.proto";
 
+import "google/protobuf/wrappers.proto";
+
 import "validate/validate.proto";
 
 package envoy.service.tap.v2alpha;
@@ -74,11 +76,35 @@ message OutputConfig {
   // sink types are supported this constraint will be relaxed.
   repeated OutputSink sinks = 1 [(validate.rules).repeated = {min_items: 1, max_items: 1}];
 
-  // [#comment:TODO(mattklein123): Output filtering. E.g., certain headers, truncated body, etc.]
+  // fixfix
+  google.protobuf.UInt32Value max_buffered_rx_bytes = 2;
+
+  // fixfix
+  google.protobuf.UInt32Value max_buffered_tx_bytes = 3;
 }
 
 // Tap output sink configuration.
 message OutputSink {
+  // Output format. fixfix
+  message Format {
+    enum Enum {
+      // fixfix
+      JSON_BODY_AS_BYTES = 0;
+
+      // fixfix
+      JSON_BODY_AS_STRING = 1;
+
+      // Binary proto format. fixfix
+      PROTO_BINARY = 2;
+
+      // Text proto format. fixfix
+      PROTO_TEXT = 3;
+    }
+  }
+
+  // fixfix
+  Format.Enum format = 1 [(validate.rules).enum.defined_only = true];
+
   oneof output_sink_type {
     option (validate.required) = true;
 
@@ -90,10 +116,10 @@ message OutputSink {
     //   configured from the :http:post:`/tap` admin endpoint. Thus, if an extension has
     //   been configured to receive tap configuration from some other source (e.g., static
     //   file, XDS, etc.) configuring the streaming admin output type will fail.
-    StreamingAdminSink streaming_admin = 1;
+    StreamingAdminSink streaming_admin = 2;
 
     // Tap output will be written to a file per tap sink.
-    FilePerTapSink file_per_tap = 2;
+    FilePerTapSink file_per_tap = 3;
   }
 }
 
@@ -107,13 +133,4 @@ message FilePerTapSink {
   // identifier distinguishing the recorded trace for stream instances (the Envoy
   // connection ID, HTTP stream ID, etc.).
   string path_prefix = 1 [(validate.rules).string.min_bytes = 1];
-
-  // File format.
-  enum Format {
-    // Binary proto format.
-    PROTO_BINARY = 0;
-    // Text proto format.
-    PROTO_TEXT = 1;
-  }
-  Format format = 2 [(validate.rules).enum.defined_only = true];
 }
